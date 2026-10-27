@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jagjivan Nagar Development Tracker</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #f4f6f9;
+            color: #333;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #0056b3;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background-color: #e0e0e0;
+            color: #333;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .tab-btn.active {
+            background-color: #0056b3;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .tab-btn:hover:not(.active) {
+            background-color: #d0d0d0;
+        }
+        .content-card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        tr:nth-child(even) {
+            background-color: #fcfcfc;
+        }
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Jagjivan Nagar Development Tracker</h1>
+</header>
+
+<div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('Overall Monitoring')">Overall Monitoring</button>
+    <button class="tab-btn" onclick="switchTab('Dashboard')">Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('Labour Service Expenses')">Labour Service Expenses</button>
+</div>
+
+<div class="content-card">
+    <div id="table-container">
+        <div class="loading">Loading sheet data...</div>
+    </div>
+</div>
+
+<script>
+    const SPREADSHEET_ID = '1SWIWi595tkKIkQ1D9j_g1-MIrHs74-e0VesKoPRkk4g';
+
+    function switchTab(sheetName) {
+        // Update UI buttons
+        const buttons = document.querySelectorAll('.tab-btn');
+        buttons.forEach(btn => {
+            if (btn.innerText.trim() === sheetName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // Fetch data for selected sheet
+        fetchSheetData(sheetName);
+    }
+
+    function fetchSheetData(sheetName) {
+        const container = document.getElementById('table-container');
+        container.innerHTML = '<div class="loading">Loading ' + sheetName + '...</div>';
+
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+
+        fetch(url)
+            .then(response => response.text())
+            .then(data => {
+                // Remove Google API wrapper padding to get valid JSON
+                const jsonString = data.substring(47, data.length - 2);
+                const json = JSON.parse(jsonString);
+                renderTable(json.table);
+            })
+            .catch(error => {
+                console.error('Error fetching sheet:', error);
+                container.innerHTML = '<div class="loading" style="color:red;">Failed to load data. Please check public access permissions on the Google Sheet.</div>';
+            });
+    }
+
+    function renderTable(tableData) {
+        const container = document.getElementById('table-container');
+
+        if (!tableData || !tableData.rows || tableData.rows.length === 0) {
+            container.innerHTML = '<div class="loading">No data found in this sheet.</div>';
+            return;
+        }
+
+        let html = '<table><thead><tr>';
+
+        // Render Header Columns
+        tableData.cols.forEach(col => {
+            const label = col.label ? col.label : '';
+            html += `<th>${label}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        // Render Row Data
+        tableData.rows.forEach(row => {
+            let hasData = false;
+            let rowHtml = '<tr>';
+            row.c.forEach(cell => {
+                const value = (cell && cell.v !== null && cell.v !== undefined) ? (cell.f || cell.v) : '';
+                if (value !== '') hasData = true;
+                rowHtml += `<td>${value}</td>`;
+            });
+            rowHtml += '</tr>';
+
+            if (hasData) {
+                html += rowHtml;
+            }
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    // Initial Load
+    window.onload = function() {
+        fetchSheetData('Overall Monitoring');
+    };
+</script>
+</body>
+</html>
